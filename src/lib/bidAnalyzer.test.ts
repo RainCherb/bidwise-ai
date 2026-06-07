@@ -30,5 +30,22 @@ describe("analyzeBid", () => {
 
     expect(analysis.decision).toBe("No bid");
     expect(analysis.riskLevel).toBe("high");
+    expect(analysis.signals.some((signal) => signal.label === "Budget visible")).toBe(false);
+    expect(analysis.signals.some((signal) => signal.label === "Budget missing or unclear")).toBe(true);
+    expect(analysis.signals.some((signal) => signal.label === "AI or analytics fit")).toBe(false);
+    expect(analysis.missingInfo).toContain("Budget or pricing model");
+  });
+
+  it("normalizes invalid profile numbers before scoring and prompting", () => {
+    const analysis = analyzeBid("A clear dashboard project with a $12,000 budget ceiling.", {
+      minimumMargin: Number.NaN,
+      weeklyCapacityHours: Number.NaN,
+      strengths: "",
+      constraints: "",
+    });
+
+    expect(analysis.aiPrompt).toContain("Minimum target margin: 35%");
+    expect(analysis.aiPrompt).toContain("Weekly delivery capacity: 24 hours");
+    expect(analysis.actionPlan.join(" ")).not.toContain("NaN");
   });
 });

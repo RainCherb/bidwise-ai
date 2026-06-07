@@ -31,13 +31,17 @@ const decisionTone: Record<Decision, string> = {
 function App() {
   const [rfpText, setRfpText] = useState(sampleRfp);
   const [profile, setProfile] = useState<CompanyProfile>(initialProfile);
-  const [copied, setCopied] = useState(false);
+  const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
   const analysis = useMemo(() => analyzeBid(rfpText, profile), [rfpText, profile]);
 
   async function copyPrompt() {
-    await navigator.clipboard.writeText(analysis.aiPrompt);
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1800);
+    try {
+      await navigator.clipboard.writeText(analysis.aiPrompt);
+      setCopyState("copied");
+    } catch {
+      setCopyState("failed");
+    }
+    window.setTimeout(() => setCopyState("idle"), 1800);
   }
 
   return (
@@ -196,7 +200,7 @@ function App() {
           </div>
           <button onClick={copyPrompt} type="button">
             <Copy size={17} aria-hidden="true" />
-            {copied ? "Copied" : "Copy"}
+            {copyState === "copied" ? "Copied" : copyState === "failed" ? "Copy failed" : "Copy"}
           </button>
         </div>
         <pre>{analysis.aiPrompt}</pre>

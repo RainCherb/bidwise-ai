@@ -60,7 +60,7 @@ const positiveSignals: PatternSignal[] = [
     detail: "A stated budget ceiling reduces pricing guesswork and helps qualify margin early.",
     impact: 10,
     kind: "positive",
-    patterns: [/budget/i, /ceiling/i, /\$\s?\d+/, /fixed price/i],
+    patterns: [/budget ceiling/i, /not to exceed/i, /\$\s?\d+/, /fixed price/i],
   },
   {
     label: "Pilot-sized opportunity",
@@ -74,11 +74,18 @@ const positiveSignals: PatternSignal[] = [
     detail: "The problem matches a data, automation, or AI-assisted service offer.",
     impact: 12,
     kind: "positive",
-    patterns: [/AI/i, /forecast/i, /analytics/i, /automation/i, /machine learning/i, /dashboard/i],
+    patterns: [/\bAI\b/i, /artificial intelligence/i, /forecast/i, /analytics/i, /automation/i, /machine learning/i, /dashboard/i],
   },
 ];
 
 const riskSignals: PatternSignal[] = [
+  {
+    label: "Budget missing or unclear",
+    detail: "The buyer does not disclose a usable budget, making bid effort and margin harder to qualify.",
+    impact: -12,
+    kind: "risk",
+    patterns: [/no budget/i, /budget (?:is )?(?:unknown|tbd|not disclosed|unavailable)/i],
+  },
   {
     label: "Compressed timeline",
     detail: "The deadline appears tight enough to pressure discovery, pricing, and delivery quality.",
@@ -128,7 +135,7 @@ export function analyzeBid(
   rawText: string,
   profile: Partial<CompanyProfile> = {},
 ): BidAnalysis {
-  const normalizedProfile = { ...defaultProfile, ...profile };
+  const normalizedProfile = normalizeProfile({ ...defaultProfile, ...profile });
   const text = rawText.trim();
   const wordCount = countWords(text);
   const extractedBudget = extractBudget(text);
@@ -202,17 +209,17 @@ function collectSignals(text: string, profile: CompanyProfile): Signal[] {
 }
 
 function findMissingInfo(text: string): string[] {
-  const checks: Array<[string, RegExp]> = [
-    ["Target users or departments", /user|department|team|manager|stakeholder/i],
-    ["Current tools and systems", /CRM|ERP|POS|Shopify|Salesforce|HubSpot|spreadsheet|system|database/i],
-    ["Decision timeline after submission", /award|selection|decision|shortlist/i],
-    ["Budget or pricing model", /budget|price|pricing|ceiling|not to exceed|\$/i],
-    ["Success metrics", /success|KPI|metric|outcome|impact|ROI/i],
-    ["Security or data handling expectations", /privacy|security|data handling|access|compliance/i],
+  const checks: Array<[string, (value: string) => boolean]> = [
+    ["Target users or departments", (value) => /user|department|team|manager|stakeholder/i.test(value)],
+    ["Current tools and systems", (value) => /CRM|ERP|POS|Shopify|Salesforce|HubSpot|spreadsheet|system|database/i.test(value)],
+    ["Decision timeline after submission", (value) => /award|selection|decision|shortlist/i.test(value)],
+    ["Budget or pricing model", hasUsableBudgetInfo],
+    ["Success metrics", (value) => /success|KPI|metric|outcome|impact|ROI/i.test(value)],
+    ["Security or data handling expectations", (value) => /privacy|security|data handling|access|compliance/i.test(value)],
   ];
 
   return checks
-    .filter(([, pattern]) => !pattern.test(text))
+    .filter(([, isPresent]) => !isPresent(text))
     .map(([label]) => label);
 }
 
@@ -317,6 +324,38 @@ function estimateEffort(text: string, wordCount: number): number {
 function extractBudget(text: string): string | null {
   const match = text.match(/(?:\$|USD\s*)\s?\d{1,3}(?:,\d{3})*(?:\.\d{2})?/i);
   return match?.[0].replace(/\s+/g, "") ?? null;
+}
+
+function hasUsableBudgetInfo(text: string): boolean {
+  if (/no budget|budget (?:is )?(?:unknown|tbd|not disclosed|unavailable)/i.test(text)) {
+    return false;
+  }
+
+  return /price|pricing|budget ceiling|not to exceed|\$\s?\d|USD\s*\d|fixed price/i.test(text);
+}
+
+function normalizeProfile(profile: Partial<CompanyProfile>): CompanyProfile {
+  return {
+    name: normalizeText(profile.name, defaultProfile.name),
+    strengths: normalizeText(profile.strengths, defaultProfile.strengths),
+    constraints: normalizeText(profile.constraints, defaultProfile.constraints),
+    minimumMargin: normalizeNumber(profile.minimumMargin, defaultProfile.minimumMargin, 0, 95),
+    weeklyCapacityHours: normalizeNumber(profile.weeklyCapacityHours, defaultProfile.weeklyCapacityHours, 1, 168),
+  };
+}
+
+function normalizeText(value: string | undefined, fallback: string): string {
+  return value?.trim() || fallback;
+}
+
+function normalizeNumber(
+  value: number | undefined,
+  fallback: number,
+  min: number,
+  max: number,
+): number {
+  if (value === undefined || !Number.isFinite(value)) return fallback;
+  return clamp(Math.round(value), min, max);
 }
 
 function extractDeadline(text: string): string | null {
