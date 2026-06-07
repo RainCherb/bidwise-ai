@@ -1,0 +1,39 @@
+{
+  "name": "bidwise-ai",
+  "version": "1.0.0",
+  "private": false,
+  "type": "module",
+  "description": "A privacy-first AI bid/no-bid workspace for small businesses evaluating tenders, RFPs, and procurement requests.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "keywords": [
+    "ai",
+    "rfp",
+    "tenders",
+    "procurement",
+    "small-business",
+    "bid-management",
+    "react",
+    "vite"
+  ],
+  "author": "RainCherb",
+  "license": "MIT",
+  "dependencies": {
+    "@vitejs/plugin-react": "^5.1.1",
+    "lucide-react": "^0.562.0",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
+    "vite": "^7.2.7"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "typescript": "~5.9.3",
+    "vitest": "^4.0.15"
+  }
+}
